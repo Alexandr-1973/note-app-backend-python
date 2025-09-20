@@ -8,7 +8,7 @@ from src.database.models import User
 from src.schemas import UserSchema
 
 
-async def get_user_by_email(email: str, db: AsyncSession = Depends(get_db)):
+async def get_user_by_email(email: str, db: AsyncSession):
     stmt = select(User).filter_by(email=email)
     user = await db.execute(stmt)
     user = user.scalar_one_or_none()
@@ -19,11 +19,12 @@ async def create_user(body: UserSchema, db: AsyncSession = Depends(get_db)):
     avatar = None
     try:
         g = Gravatar(body.email)
-        avatar = g.get_image()
+        avatar = g.get_image(default="identicon")
     except Exception as err:
         print(err)
 
     new_user = User(**body.model_dump(), avatar=avatar)
+    new_user.username=new_user.email
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)

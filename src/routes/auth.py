@@ -1,9 +1,9 @@
 
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Response
 from fastapi.security import OAuth2PasswordRequestForm, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from fastapi.responses import JSONResponse
 from src.database.db import get_db
 from src.repository import users as repositories_users
 from src.schemas import UserSchema, TokenSchema, UserResponse
@@ -14,14 +14,32 @@ get_refresh_token = HTTPBearer()
 
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def signup(body: UserSchema, db: AsyncSession = Depends(get_db)):
+async def signup(response:Response, body: UserSchema, db: AsyncSession = Depends(get_db)):
     exist_user = await repositories_users.get_user_by_email(body.email, db)
     if exist_user:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists")
     body.password = auth_service.get_password_hash(body.password)
     new_user = await repositories_users.create_user(body, db)
-    return new_user
+    access_token = await auth_service.create_access_token(data={"sub": new_user.email})
+    refresh_token = await auth_service.create_refresh_token(data={"sub": new_user.email})
 
+    response.set_cookie(
+            key="accessToken",
+            value=access_token,
+            httponly=True,
+            max_age=60 * 15,
+            samesite="lax",
+            secure=False
+        )
+    response.set_cookie(
+            key="refreshToken",
+            value=refresh_token,
+            httponly=True,
+            max_age=60 * 60 * 24 * 7,
+            samesite="lax",
+            secure=False
+        )
+    return new_user
 
 @router.post("/login",  response_model=TokenSchema)
 async def login(body: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):

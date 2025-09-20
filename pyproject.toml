@@ -6,7 +6,7 @@ authors = [
     {name = "Alexandr-1973",email = "144156771+Alexandr-1973@users.noreply.github.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi (>=0.116.1,<0.117.0)",
     "uvicorn[standard] (>=0.35.0,<0.36.0)",
@@ -17,7 +17,10 @@ dependencies = [
     "python-jose[cryptography] (>=3.5.0,<4.0.0)",
     "passlib[bcrypt] (>=1.7.4,<2.0.0)",
     "asyncpg (>=0.30.0,<0.31.0)",
-    "pydantic[email] (>=2.11.9,<3.0.0)"
+    "pydantic[email] (>=2.11.9,<3.0.0)",
+    "greenlet (>=3.2.4,<4.0.0)",
+    "bcrypt (<4.1)",
+    "cloudinary (>=1.44.1,<2.0.0)"
 ]
 
 
