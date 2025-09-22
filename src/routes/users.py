@@ -35,36 +35,28 @@ async def get_current_user(request: Request, response:Response, db:AsyncSession=
     refresh_token = request.cookies.get("refreshToken")
 
     if not access_token:
-
         if not refresh_token:
             raise HTTPException(status_code=401, detail="Not authenticated")
-
-
         try:
             email = await auth_service.decode_token(refresh_token, expected_scope="refresh_token")
-
             new_access_token = auth_service.create_access_token({"sub": email})
             user = await repositories_users.get_user_by_email(email,db)
-
             response.set_cookie(
                 key="accessToken",
                 value=new_access_token,
                 httponly=True,
-                max_age=900,  # 15 минут
+                max_age=900,
                 path="/"
             )
             return user
         except HTTPException:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-
     try:
         email = await auth_service.decode_token(access_token, expected_scope="access_token")
-
-        print(email)
         user = await repositories_users.get_user_by_email(email, db)
-
         return {"username":user.username,"email":user.email,"avatar":user.avatar}
+
     except HTTPException:
         raise HTTPException(status_code=401, detail="Invalid access token")
 
