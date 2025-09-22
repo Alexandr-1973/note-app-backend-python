@@ -9,6 +9,11 @@ class UserSchema(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6, max_length=8)
 
+class UserUpdateSchema(BaseModel):
+    username: Optional[str] = Field(default=None, min_length=3, max_length=50)
+    email: EmailStr
+    avatar: Optional[str] = Field(default=None, max_length=300)
+
 
 class UserResponse(BaseModel):
     # id: int = 1
