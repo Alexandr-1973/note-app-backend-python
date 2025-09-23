@@ -1,19 +1,16 @@
 from typing import Optional
 from jose import JWTError, jwt
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from src.database.db import get_db
-from src.repository import users as repository_users
 
 
 class Auth:
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     SECRET_KEY = "secret_key"
     ALGORITHM = "HS256"
-    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+    # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
     def verify_password(self, plain_password, hashed_password):
         return self.pwd_context.verify(plain_password, hashed_password)
@@ -61,30 +58,5 @@ class Auth:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials"
             )
-
-    async def get_current_user(self, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-        credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-        try:
-            # Decode JWT
-            payload = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
-            if payload['scope'] == 'access_token':
-                email = payload["sub"]
-                if email is None:
-                    raise credentials_exception
-            else:
-                raise credentials_exception
-        except JWTError as e:
-            raise credentials_exception
-
-        user = await repository_users.get_user_by_email(email, db)
-        if user is None:
-            raise credentials_exception
-        return user
-
 
 auth_service = Auth()

@@ -1,15 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Response, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.responses import JSONResponse
 from src.database.db import get_db
 from src.repository import users as repositories_users
 from src.repository.users import create_tokens_and_set_cookies
-from src.schemas import UserSchema, UserResponse, TokenSchema
+from src.schemas import UserSchema, UserResponse
 from src.services.auth import auth_service
 
 router = APIRouter(prefix='/auth', tags=['auth'])
-get_refresh_token = HTTPBearer()
+
 
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -34,7 +32,6 @@ async def login(response: Response, body: UserSchema, db: AsyncSession = Depends
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="HTTP 401 Unauthorized")
 
     return await create_tokens_and_set_cookies(user, response, db)
-
 
 
 @router.post("/logout")
@@ -63,26 +60,22 @@ async def logout(
 @router.get("/refresh_token")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     token = request.cookies.get("refreshToken")
-    print(token)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
 
     try:
         email = await auth_service.decode_token(token, expected_scope="refresh_token")
-        print(email)
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
     user = await repositories_users.get_user_by_email(email, db)
     if not user:
-
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
 
     if user.refresh_token != token:
-
         await repositories_users.update_token(user, None, db)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -93,7 +86,6 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
     new_refresh_token = await auth_service.create_refresh_token(data={"sub": email})
 
     await repositories_users.update_token(user, new_refresh_token, db)
-
 
     response.set_cookie(
         key="accessToken",
