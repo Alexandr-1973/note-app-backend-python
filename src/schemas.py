@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 
@@ -14,7 +14,6 @@ class UserUpdateSchema(BaseModel):
     email: EmailStr
     avatar: Optional[str] = Field(default=None, max_length=300)
 
-
 class UserResponse(BaseModel):
     # id: int = 1
     username: str
@@ -24,10 +23,21 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-
-
 class TokenSchema(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+class NoteSchema(BaseModel):
+    title: str = Field(max_length=50)
+    content: str = Field(max_length=150)
+    tag: str = Field(max_length=50)
+
+
+
+class NoteResponseSchema(NoteSchema):
+
+    id: int = 1
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)

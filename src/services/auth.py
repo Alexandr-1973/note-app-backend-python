@@ -59,4 +59,23 @@ class Auth:
                 detail="Could not validate credentials"
             )
 
+    async def get_current_user(
+            request: Request, db: AsyncSession = Depends(get_db)
+    ):
+        access_token = request.cookies.get("accessToken")
+        if not access_token:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        try:
+            email = await auth_service.decode_token(access_token, expected_scope="access_token")
+            user = await repositories_users.get_user_by_email(email, db)
+
+            return {
+                "username": user.username,
+                "email": user.email,
+                "avatar": user.avatar
+            }
+        except HTTPException:
+            raise HTTPException(status_code=401, detail="Invalid or expired access token")
+
 auth_service = Auth()
