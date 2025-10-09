@@ -1,9 +1,31 @@
 from typing import Optional
 from jose import JWTError, jwt
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request, Depends
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from src.repository import users as repositories_users
+from sqlalchemy.ext.asyncio import AsyncSession
+from src.database.db import get_db
+
+
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
+    access_token = request.cookies.get("accessToken")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        email = await auth_service.decode_token(access_token, expected_scope="access_token")
+        user = await repositories_users.get_user_by_email(email, db)
+
+        return user
+        #     {
+        #     "username": user.username,
+        #     "email": user.email,
+        #     "avatar": user.avatar
+        # }
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Invalid or expired access token")
 
 
 class Auth:
@@ -59,23 +81,5 @@ class Auth:
                 detail="Could not validate credentials"
             )
 
-    async def get_current_user(
-            request: Request, db: AsyncSession = Depends(get_db)
-    ):
-        access_token = request.cookies.get("accessToken")
-        if not access_token:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-
-        try:
-            email = await auth_service.decode_token(access_token, expected_scope="access_token")
-            user = await repositories_users.get_user_by_email(email, db)
-
-            return {
-                "username": user.username,
-                "email": user.email,
-                "avatar": user.avatar
-            }
-        except HTTPException:
-            raise HTTPException(status_code=401, detail="Invalid or expired access token")
 
 auth_service = Auth()

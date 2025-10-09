@@ -10,7 +10,8 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.conf.config import config
 from src.database.db import get_db
-from src.services.auth import auth_service
+from src.schemas import UserResponse
+from src.services.auth import auth_service, get_current_user
 from src.repository import users as repositories_users
 from fastapi import Request
 
@@ -24,25 +25,31 @@ cloudinary.config(
 )
 
 
-@router.get("/me")
-async def get_current_user(
-    request: Request, db: AsyncSession = Depends(get_db)
-):
-    access_token = request.cookies.get("accessToken")
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        email = await auth_service.decode_token(access_token, expected_scope="access_token")
-        user = await repositories_users.get_user_by_email(email, db)
-
-        return {
-            "username": user.username,
-            "email": user.email,
-            "avatar": user.avatar
-        }
-    except HTTPException:
-        raise HTTPException(status_code=401, detail="Invalid or expired access token")
+@router.get("/me", response_model=UserResponse)
+async def get_user(user = Depends(get_current_user)):
+    return {
+        "username": user.username,
+        "email": user.email,
+        "avatar": user.avatar,
+    }
+# async def get_current_user(
+#     request: Request, db: AsyncSession = Depends(get_db)
+# ):
+#     access_token = request.cookies.get("accessToken")
+#     if not access_token:
+#         raise HTTPException(status_code=401, detail="Not authenticated")
+#
+#     try:
+#         email = await auth_service.decode_token(access_token, expected_scope="access_token")
+#         user = await repositories_users.get_user_by_email(email, db)
+#
+#         return {
+#             "username": user.username,
+#             "email": user.email,
+#             "avatar": user.avatar
+#         }
+#     except HTTPException:
+#         raise HTTPException(status_code=401, detail="Invalid or expired access token")
 
 
 @router.patch("/me")
