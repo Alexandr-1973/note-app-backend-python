@@ -19,13 +19,9 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
         user = await repositories_users.get_user_by_email(email, db)
 
         return user
-        #     {
-        #     "username": user.username,
-        #     "email": user.email,
-        #     "avatar": user.avatar
-        # }
+
     except HTTPException:
-        raise HTTPException(status_code=401, detail="Invalid or expired access token")
+        raise HTTPException(status_code=401, detail="Invalid or expired access token", headers={"X-Token-Expired": "1"},)
 
 
 class Auth:

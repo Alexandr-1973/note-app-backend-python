@@ -1,14 +1,57 @@
-from typing import List
+from typing import List, Optional, Tuple
 
-from sqlalchemy import and_
+from sqlalchemy import and_, select, func, or_
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from src.database.models import Note, User
 from src.schemas import NoteSchema, NoteResponseSchema
 
+async def get_notes_page(
+    db: AsyncSession,
+    user: User,
+    page: int,
+    per_page: int,
+    search: str = "",
+    tag: Optional[str] = None,
+) -> Tuple[List[Note], int]:
+    """
+    Возвращает кортеж: (список заметок на странице, total_pages)
+    """
+    # Базовый фильтр — только заметки текущего пользователя
+    base_filters = [Note.user_id == user.id]
 
-async def get_notes(skip: int, limit: int, user: User, db: Session) -> List[Note]:
-    return db.query(Note).filter(Note.user_id == user.id).offset(skip).limit(limit).all()
+    if tag:
+        base_filters.append(Note.tag == tag)
+
+    if search:
+        like = f"%{search}%"
+        base_filters.append(
+            or_(Note.title.ilike(like), Note.content.ilike(like))
+        )
+
+    # Счётчик общего количества
+    count_stmt = select(func.count()).select_from(Note).where(*base_filters)
+    total: int = (await db.execute(count_stmt)).scalar_one()
+
+    # Пагинация
+    offset = (page - 1) * per_page
+
+    data_stmt = (
+        select(Note)
+        .where(*base_filters)
+        .order_by(Note.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    result = await db.execute(data_stmt)
+    notes = result.scalars().all()
+
+    total_pages = (total + per_page - 1) // per_page if per_page > 0 else 1
+    return notes, total_pages
+
+# async def get_notes(skip: int, limit: int, user: User, db: Session) -> List[Note]:
+#     return db.query(Note).filter(Note.user_id == user.id).offset(skip).limit(limit).all()
 
 
 async def get_note(note_id: int, user: User, db: Session) -> Note:

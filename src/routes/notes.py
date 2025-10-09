@@ -1,21 +1,37 @@
-from typing import List
-
-from fastapi import APIRouter, HTTPException, Depends, status
+from typing import List, Optional
+from sqlalchemy import func, or_
+from fastapi import APIRouter, HTTPException, Depends, status, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from src.database.db import get_db
-from src.schemas import NoteSchema, NoteResponseSchema, UserSchema
+from src.database.models import Note
+from src.schemas import NoteSchema, NoteResponseSchema, UserSchema, NotesPageSchema
 from src.repository import notes as repository_notes
 from src.services.auth import auth_service, get_current_user
 
 router = APIRouter(prefix='/notes', tags=["notes"])
 
 
-@router.get("/", response_model=List[NoteResponseSchema])
-async def read_notes(skip: int = 0, limit: int = 100, db: Session = Depends(get_db),
-                     current_user: UserSchema = Depends(get_current_user)):
-    notes = await repository_notes.get_notes(skip, limit, current_user, db)
-    return notes
+@router.get("", response_model=NotesPageSchema)
+async def read_notes(
+    page: int = Query(1, ge=1),
+    perPage: int = Query(12, ge=1, le=100),
+    search: str = Query("", min_length=0),
+    tag: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_user),
+):
+    tag_value = tag if tag not in (None, "", "All") else None
+    notes, total_pages = await repository_notes.get_notes_page(
+        db=db,
+        user=current_user,
+        page=page,
+        per_page=perPage,
+        search=search,
+        tag=tag_value,
+    )
+    return {"notes": notes, "totalPages": total_pages}
 
 
 @router.get("/{note_id}", response_model=NoteResponseSchema)

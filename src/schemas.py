@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
@@ -36,8 +36,11 @@ class NoteSchema(BaseModel):
 
 
 class NoteResponseSchema(NoteSchema):
-
-    id: int = 1
+    id: int
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class NotesPageSchema(BaseModel):
+    notes: List[NoteResponseSchema]
+    totalPages: int
