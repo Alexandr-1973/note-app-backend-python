@@ -57,8 +57,10 @@ class Auth:
         return encoded_refresh_token
 
     async def decode_token(self, token: str, expected_scope: str = "access_token"):
+
         try:
             payload = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
+            print(payload)
             if payload.get("exp") and datetime.utcfromtimestamp(payload["exp"]) < datetime.utcnow():
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,

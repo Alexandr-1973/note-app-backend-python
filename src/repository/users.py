@@ -42,7 +42,6 @@ async def create_tokens_and_set_cookies(user: User, response: Response, db: Asyn
         "email": user.email,
         "avatar": user.avatar
     }
-    print(user_data)
 
     access_token = await auth_service.create_access_token({"sub": user.email})
     refresh_token = await auth_service.create_refresh_token({"sub": user.email})
@@ -53,16 +52,18 @@ async def create_tokens_and_set_cookies(user: User, response: Response, db: Asyn
         value=access_token,
         httponly=True,
         max_age=60 * 15,
-        samesite="none",
-        secure=False
+        samesite="lax",
+        secure=False,
+        path="/",
     )
     response.set_cookie(
         key="refreshToken",
         value=refresh_token,
         httponly=True,
         max_age=60 * 60 * 24 * 7,
-        samesite="none",
-        secure=False
+        samesite="lax",
+        secure=False,
+        path="/",
     )
 
     return user_data

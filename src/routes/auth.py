@@ -74,9 +74,10 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
-
+    # print (user.refresh_token)
+    # print(token)
     if user.refresh_token != token:
-        await repositories_users.update_token(user, None, db)
+        # await repositories_users.update_token(user, None, db)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
@@ -91,17 +92,19 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
         key="accessToken",
         value=access_token,
         httponly=True,
+        samesite="lax",
+        secure=False,
         path="/",
-        samesite="none",
-        secure=True
+        max_age=60 * 15,
     )
     response.set_cookie(
         key="refreshToken",
         value=new_refresh_token,
         httponly=True,
+        samesite="lax",
+        secure=False,
         path="/",
-        samesite="none",
-        secure=True
+        max_age=60 * 60 * 24 * 7,
     )
 
     return {"success": True}
