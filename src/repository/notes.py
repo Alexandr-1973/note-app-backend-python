@@ -15,10 +15,7 @@ async def get_notes_page(
     search: str = "",
     tag: Optional[str] = None,
 ) -> Tuple[List[Note], int]:
-    """
-    Возвращает кортеж: (список заметок на странице, total_pages)
-    """
-    # Базовый фильтр — только заметки текущего пользователя
+
     base_filters = [Note.user_id == user.id]
 
     if tag:
@@ -30,11 +27,9 @@ async def get_notes_page(
             or_(Note.title.ilike(like), Note.content.ilike(like))
         )
 
-    # Счётчик общего количества
     count_stmt = select(func.count()).select_from(Note).where(*base_filters)
     total: int = (await db.execute(count_stmt)).scalar_one()
 
-    # Пагинация
     offset = (page - 1) * per_page
 
     data_stmt = (
@@ -50,29 +45,38 @@ async def get_notes_page(
     total_pages = (total + per_page - 1) // per_page if per_page > 0 else 1
     return notes, total_pages
 
-# async def get_notes(skip: int, limit: int, user: User, db: Session) -> List[Note]:
-#     return db.query(Note).filter(Note.user_id == user.id).offset(skip).limit(limit).all()
-
 
 async def get_note(note_id: int, user: User, db: Session) -> Note:
     return db.query(Note).filter(and_(Note.id == note_id, Note.user_id == user.id)).first()
 
 
-async def create_note(body: NoteSchema, user: User, db: Session) -> Note:
+async def create_note(body: NoteSchema, user: User, db: AsyncSession) -> Note:
+    new_note = Note(
+        title=body.title,
+        content=body.content,
+        tag=body.tag,
+        user_id=user.id,
+    )
+    db.add(new_note)
+    await db.commit()
+    await db.refresh(new_note)
+    return new_note
 
-    note = Note(title=body.title, description=body.description, tags=tags, user=user)
-    db.add(note)
-    db.commit()
-    db.refresh(note)
-    return note
 
+async def remove_note(note_id: int, user: User, db: AsyncSession) -> Note | None:
 
-async def remove_note(note_id: int, user: User, db: Session) -> Note | None:
-    note = db.query(Note).filter(and_(Note.id == note_id, Note.user_id == user.id)).first()
+    stmt = select(Note).where(and_(Note.id == note_id, Note.user_id == user.id))
+    result = await db.execute(stmt)
+    note = result.scalar_one_or_none()
+
     if note:
-        db.delete(note)
-        db.commit()
-    return note
+        await db.delete(note)
+        await db.commit()
+        return note
+
+    return None
+
+
 
 
 # async def update_note(note_id: int, body: NoteUpdate, user: User, db: Session) -> Note | None:
