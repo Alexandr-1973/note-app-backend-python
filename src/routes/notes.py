@@ -35,13 +35,18 @@ async def read_notes(
 
 
 @router.get("/{note_id}", response_model=NoteResponseSchema)
-async def read_note(note_id: int, db: Session = Depends(get_db),
-                    current_user: UserSchema = Depends(get_current_user)):
+async def get_note_by_id(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_user),
+):
     note = await repository_notes.get_note(note_id, current_user, db)
-    if note is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    if not note:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Note not found"
+        )
     return note
-
 
 @router.post(
     "",

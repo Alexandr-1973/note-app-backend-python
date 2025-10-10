@@ -46,9 +46,10 @@ async def get_notes_page(
     return notes, total_pages
 
 
-async def get_note(note_id: int, user: User, db: Session) -> Note:
-    return db.query(Note).filter(and_(Note.id == note_id, Note.user_id == user.id)).first()
-
+async def get_note(note_id: int, user: User, db: AsyncSession) -> Note | None:
+    stmt = select(Note).where(and_(Note.id == note_id, Note.user_id == user.id))
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
 async def create_note(body: NoteSchema, user: User, db: AsyncSession) -> Note:
     new_note = Note(
