@@ -1,12 +1,12 @@
 from typing import List, Optional
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select, and_
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from src.database.db import get_db
 from src.database.models import Note
-from src.schemas import NoteSchema, NoteResponseSchema, UserSchema, NotesPageSchema
+from src.schemas import NoteSchema, NoteResponseSchema, UserSchema, NotesPageSchema, NotePatchSchema
 from src.repository import notes as repository_notes
 from src.services.auth import auth_service, get_current_user
 
@@ -48,6 +48,22 @@ async def get_note_by_id(
         )
     return note
 
+@router.patch("/{note_id}", response_model=NoteResponseSchema)
+async def patch_note(
+    note_id: int,
+    body: NotePatchSchema,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_user),
+):
+    update_data = body.model_dump(exclude_unset=True)
+    note = await repository_notes.patch_note(
+        note_id=note_id,
+        user_id=current_user.id,
+        db=db,
+        update_data=update_data,
+    )
+    return note
+
 @router.post(
     "",
     response_model=NoteResponseSchema,
@@ -61,27 +77,6 @@ async def create_note(
 
     new_note = await repository_notes.create_note(body, current_user, db)
     return new_note
-
-
-
-# @router.put("/{note_id}", response_model=NoteResponseSchema)
-# async def update_note(body: NoteUpdate, note_id: int, db: Session = Depends(get_db),
-#                       current_user: User = Depends(auth_service.get_current_user)):
-#     note = await repository_notes.update_note(note_id, body, current_user, db)
-#     if note is None:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-#     return note
-
-
-# @router.patch("/{note_id}", response_model=NoteResponseSchema)
-# async def update_status_note(body: NoteStatusUpdate, note_id: int, db: Session = Depends(get_db),
-#                              current_user: User = Depends(auth_service.get_current_user)):
-#     note = await repository_notes.update_status_note(note_id, body, current_user, db)
-#     if note is None:
-#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-#     return note
-
-
 
 
 @router.delete("/{note_id}", response_model=NoteResponseSchema)

@@ -8,8 +8,6 @@ from src.services.auth import auth_service
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 
-
-
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def signup(response: Response, body: UserSchema, db: AsyncSession = Depends(get_db)):
     exist_user = await repositories_users.get_user_by_email(body.email, db)

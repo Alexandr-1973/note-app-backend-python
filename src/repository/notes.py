@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 
+from fastapi import HTTPException, status
 from sqlalchemy import and_, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -63,6 +64,33 @@ async def create_note(body: NoteSchema, user: User, db: AsyncSession) -> Note:
     await db.refresh(new_note)
     return new_note
 
+async def patch_note(
+    note_id: int,
+    user_id: int,
+    db: AsyncSession,
+    update_data: dict,
+) -> Note:
+
+    print(update_data)
+    print (note_id, user_id)
+    result = await db.execute(
+        select(Note).where(and_(Note.id == note_id, Note.user_id == user_id))
+    )
+    note = result.scalar_one_or_none()
+    print (note.title)
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    if not update_data:
+        return note
+
+    for key, value in update_data.items():
+        setattr(note, key, value)
+
+    await db.commit()
+    await db.refresh(note)
+    return note
+
 
 async def remove_note(note_id: int, user: User, db: AsyncSession) -> Note | None:
 
@@ -76,29 +104,4 @@ async def remove_note(note_id: int, user: User, db: AsyncSession) -> Note | None
         return note
 
     return None
-
-
-
-
-# async def update_note(note_id: int, body: NoteUpdate, user: User, db: Session) -> Note | None:
-#     note = db.query(Note).filter(and_(Note.id == note_id, Note.user_id == user.id)).first()
-#     if note:
-#         tags = db.query(Tag).filter(and_(Tag.id.in_(body.tags), Note.user_id == user.id)).all()
-#         note.title = body.title
-#         note.description = body.description
-#         note.done = body.done
-#         note.tags = tags
-#         db.commit()
-#     return note
-
-
-# async def update_status_note(note_id: int, body: NoteStatusUpdate, user: User, db: Session) -> Note | None:
-#     note = db.query(Note).filter(and_(Note.id == note_id, Note.user_id == user.id)).first()
-#     if note:
-#         note.done = body.done
-#         db.commit()
-#     return note
-
-
-
 

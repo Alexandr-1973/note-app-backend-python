@@ -33,7 +33,11 @@ class NoteSchema(BaseModel):
     content: str = Field(max_length=150)
     tag: str = Field(max_length=50)
 
-
+class NotePatchSchema(BaseModel):
+    # id: int
+    title: Optional[str] = Field(max_length=50)
+    content: Optional[str] = Field(max_length=150)
+    tag: Optional[str] = Field(max_length=50)
 
 class NoteResponseSchema(NoteSchema):
     id: int

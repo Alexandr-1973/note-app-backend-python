@@ -1,7 +1,6 @@
 from typing import Optional
 from jose import JWTError, jwt
 from fastapi import HTTPException, status, Request, Depends
-from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from src.repository import users as repositories_users
