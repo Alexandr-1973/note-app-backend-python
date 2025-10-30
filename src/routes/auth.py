@@ -5,6 +5,7 @@ from src.repository import users as repositories_users
 from src.repository.users import create_tokens_and_set_cookies
 from src.schemas import UserSchema, UserResponse
 from src.services.auth import auth_service
+from src.utils.cookies import set_auth_cookies
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -55,12 +56,11 @@ async def logout(
     return {"message": "Successfully logged out"}
 
 
-@router.get("/refresh_token")
+@router.post("/refresh_token")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     token = request.cookies.get("refreshToken")
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
-
     try:
         email = await auth_service.decode_token(token, expected_scope="refresh_token")
     except Exception:
@@ -72,10 +72,8 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
-    # print (user.refresh_token)
-    # print(token)
+
     if user.refresh_token != token:
-        # await repositories_users.update_token(user, None, db)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
@@ -83,26 +81,7 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
 
     access_token = await auth_service.create_access_token(data={"sub": email})
     new_refresh_token = await auth_service.create_refresh_token(data={"sub": email})
-
     await repositories_users.update_token(user, new_refresh_token, db)
-
-    response.set_cookie(
-        key="accessToken",
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
-        path="/",
-        max_age=60 * 15,
-    )
-    response.set_cookie(
-        key="refreshToken",
-        value=new_refresh_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
-        path="/",
-        max_age=60 * 60 * 24 * 7,
-    )
+    set_auth_cookies(response, access_token, new_refresh_token)
 
     return {"success": True}

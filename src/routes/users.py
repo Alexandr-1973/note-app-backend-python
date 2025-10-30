@@ -11,10 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.conf.config import config
 from src.database.db import get_db
 from src.schemas import UserResponse
-from src.services.auth import auth_service, get_current_user
+from src.services.auth import auth_service
 from src.repository import users as repositories_users
 from fastapi import Request
 
+from src.utils.avatar import set_avatar
 
 router = APIRouter(prefix="/users", tags=["users"])
 cloudinary.config(
@@ -24,9 +25,8 @@ cloudinary.config(
     secure=True,
 )
 
-
 @router.get("/me", response_model=UserResponse)
-async def get_user(user = Depends(get_current_user)):
+async def get_user(user = Depends(repositories_users.get_current_user)):
     return {
         "username": user.username,
         "email": user.email,
@@ -58,27 +58,7 @@ async def patch_user(
         user.username = username
 
     if avatar_file:
-        if not avatar_file.content_type.startswith("image/"):
-            raise HTTPException(status_code=400, detail="Only image files are allowed")
-
-        avatar_file.file.seek(0, os.SEEK_END)
-        file_size = avatar_file.file.tell()
-        avatar_file.file.seek(0)
-        if file_size > 2 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="File too large (max 2 MB)")
-
-        public_id = f"Web16/{user.email}"
-        res = cloudinary.uploader.upload(avatar_file.file, public_id=public_id, owerite=True)
-        if avatar_file.content_type == "image/svg+xml":
-            res_url = cloudinary.CloudinaryImage(public_id).build_url(
-                format="png", width=120, height=120, crop="fill", version=res.get("version")
-            )
-        else:
-            res_url = cloudinary.CloudinaryImage(public_id).build_url(
-                width=120, height=120, crop="fill", version=res.get("version")
-            )
-        # res_url = cloudinary.CloudinaryImage(public_id).build_url( version=res.get("version"))
-        user.avatar = res_url
+        user.avatar = set_avatar(avatar_file, user)
 
     await db.commit()
     await db.refresh(user)

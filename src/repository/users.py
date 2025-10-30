@@ -1,12 +1,12 @@
-from fastapi import Depends, Response
+from fastapi import Depends, Response, Request, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from libgravatar import Gravatar
-
 from src.database.db import get_db
 from src.database.models import User
 from src.schemas import UserSchema
 from src.services.auth import auth_service
+from src.utils.cookies import set_auth_cookies
 
 
 async def get_user_by_email(email: str, db: AsyncSession):
@@ -46,24 +46,21 @@ async def create_tokens_and_set_cookies(user: User, response: Response, db: Asyn
     access_token = await auth_service.create_access_token({"sub": user.email})
     refresh_token = await auth_service.create_refresh_token({"sub": user.email})
     await update_token(user, refresh_token, db)
-
-    response.set_cookie(
-        key="accessToken",
-        value=access_token,
-        httponly=True,
-        max_age=60 * 15,
-        samesite="lax",
-        secure=False,
-        path="/",
-    )
-    response.set_cookie(
-        key="refreshToken",
-        value=refresh_token,
-        httponly=True,
-        max_age=60 * 60 * 24 * 7,
-        samesite="lax",
-        secure=False,
-        path="/",
-    )
+    set_auth_cookies(response, access_token, refresh_token)
 
     return user_data
+
+
+async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
+    access_token = request.cookies.get("accessToken")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        email = await auth_service.decode_token(access_token, expected_scope="access_token")
+        user = await get_user_by_email(email, db)
+
+        return user
+
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Invalid or expired access token", headers={"X-Token-Expired": "1"},)

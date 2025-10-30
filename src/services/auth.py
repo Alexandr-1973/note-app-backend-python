@@ -3,31 +3,12 @@ from jose import JWTError, jwt
 from fastapi import HTTPException, status, Request, Depends
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from src.repository import users as repositories_users
-from sqlalchemy.ext.asyncio import AsyncSession
-from src.database.db import get_db
-
-
-async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
-    access_token = request.cookies.get("accessToken")
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        email = await auth_service.decode_token(access_token, expected_scope="access_token")
-        user = await repositories_users.get_user_by_email(email, db)
-
-        return user
-
-    except HTTPException:
-        raise HTTPException(status_code=401, detail="Invalid or expired access token", headers={"X-Token-Expired": "1"},)
 
 
 class Auth:
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     SECRET_KEY = "secret_key"
     ALGORITHM = "HS256"
-    # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
     def verify_password(self, plain_password, hashed_password):
         return self.pwd_context.verify(plain_password, hashed_password)
@@ -59,7 +40,6 @@ class Auth:
 
         try:
             payload = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
-            print(payload)
             if payload.get("exp") and datetime.utcfromtimestamp(payload["exp"]) < datetime.utcnow():
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,

@@ -1,17 +1,13 @@
-from typing import List, Optional
-from sqlalchemy import func, or_, select, and_
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-
 from src.database.db import get_db
-from src.database.models import Note
 from src.schemas import NoteSchema, NoteResponseSchema, UserSchema, NotesPageSchema, NotePatchSchema
 from src.repository import notes as repository_notes
-from src.services.auth import auth_service, get_current_user
+from src.repository.users import get_current_user
 
 router = APIRouter(prefix='/notes', tags=["notes"])
-
 
 @router.get("", response_model=NotesPageSchema)
 async def read_notes(
@@ -74,7 +70,6 @@ async def create_note(
     db: AsyncSession = Depends(get_db),
     current_user: UserSchema = Depends(get_current_user),
 ):
-
     new_note = await repository_notes.create_note(body, current_user, db)
     return new_note
 

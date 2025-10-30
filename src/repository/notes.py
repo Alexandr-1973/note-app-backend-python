@@ -1,12 +1,9 @@
 from typing import List, Optional, Tuple
-
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
-
 from src.database.models import Note, User
-from src.schemas import NoteSchema, NoteResponseSchema
+from src.schemas import NoteSchema
 
 async def get_notes_page(
     db: AsyncSession,
@@ -71,13 +68,11 @@ async def patch_note(
     update_data: dict,
 ) -> Note:
 
-    print(update_data)
-    print (note_id, user_id)
     result = await db.execute(
         select(Note).where(and_(Note.id == note_id, Note.user_id == user_id))
     )
     note = result.scalar_one_or_none()
-    print (note.title)
+
     if not note:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
