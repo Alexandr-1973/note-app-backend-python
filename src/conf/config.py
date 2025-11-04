@@ -1,27 +1,27 @@
-DB_URL = "postgresql+asyncpg://postgres:567234@localhost:5432/database"
-
 from typing import Any
-
-from pydantic import ConfigDict, field_validator, EmailStr
+from pydantic import ConfigDict, field_validator
 from pydantic_settings import BaseSettings
 
-
 class Settings(BaseSettings):
-    DB_URL: str
+
+    POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+
     SECRET_KEY_JWT: str
     ALGORITHM: str
-    MAIL_USERNAME: EmailStr
-    MAIL_PASSWORD: str
-    MAIL_FROM: str
-    MAIL_PORT: int
-    MAIL_SERVER: str
-    MAIL_FROM_NAME:str
-    REDIS_DOMAIN: str
-    REDIS_PORT: int
-    REDIS_PASSWORD: str | None = None
     CLOUDINARY_NAME: str
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
+
+    @property
+    def DB_URL(self) -> str:
+        return (
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
     @field_validator("ALGORITHM")
     @classmethod
